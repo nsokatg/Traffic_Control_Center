@@ -46,9 +46,16 @@
             font-size: 0.9rem;
             cursor: pointer;
             font-weight: bold;
+            white-space: nowrap;
         }
         .btn:hover {
             background-color: #2ea043;
+        }
+        .btn-clear {
+            background-color: #da3633;
+        }
+        .btn-clear:hover {
+            background-color: #b62324;
         }
         .table-container {
             overflow-x: auto;
@@ -104,10 +111,11 @@
         <div class="input-group">
             <label for="pat" style="font-size:0.9rem;">Personal Access Token (PAT):</label>
             <input type="password" id="pat" placeholder="github_pat_xxx または ghp_xxx を入力">
-            <button class="btn" onclick="fetchTrafficData()">巡回実行</button>
+            <button class="btn" onclick="saveAndFetch()">保存して巡回実行</button>
+            <button class="btn btn-clear" onclick="clearToken()">保存クリア</button>
         </div>
         <div class="note">
-            ※ Traffic APIを取得するには、`repo` 権限を持つ GitHub Personal Access Token (PAT) が必要です。入力したトークンはブラウザ内でのみ利用され保存されません。
+            ※ 入力したトークンはブラウザのローカルストレージに安全に保存され、次回から自動で読み込まれます（他人にこのPCを使われない環境でご利用ください）。
         </div>
     </div>
 
@@ -149,10 +157,8 @@
             { owner: 'nsokatg', name: 'GlyphAI', label: 'GlyphAI' },
             { owner: 'nsokatg', name: 'ai-photo-browser', label: 'ai-photo-browser' },
             { owner: 'nsokatg', name: 'Smart_Buyer', label: 'Smart_Buyer' },
-            { owner: 'nsokatg', name: 'Traffic_Control_Center', label: 'Traffic_Control_Center' },
-             { owner: 'nsokatg', name: 'Bizportal', label: 'Bizportal' }
-            
-            
+            { owner: 'nsokatg', name: 'Traffic_Control_Center', label: 'Traffic_Control_Center' }, 
+            { owner: 'nsokatg', name: 'Bizportal', label: 'Bizportal' }
         ];
 
         // 初期表示（表の骨組みを生成）
@@ -163,24 +169,44 @@
             targetRepos.forEach((repo, index) => {
                 const tr = document.createElement('tr');
                 tr.id = `repo-row-${index}`;
+                // リンク先を正しい /graphs/traffic に修正
                 tr.innerHTML = `
                     <td style="font-weight:bold;">${repo.label} <br><small style="color:#8b949e;">${repo.owner}/${repo.name}</small></td>
                     <td id="uv-${index}">-</td>
                     <td id="pv-${index}">-</td>
                     <td><span class="badge" id="status-${index}" style="background-color:#30363d;">未実行</span></td>
                     <td>
-                        <a href="https://github.com/${repo.owner}/${repo.name}/insights/traffic" target="_blank" style="color:#58a6ff; text-decoration:none;">Trafficを開く</a>
+                        <a href="https://github.com/${repo.owner}/${repo.name}/graphs/traffic" target="_blank" style="color:#58a6ff; text-decoration:none;">Trafficを開く</a>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
+        // トークンを保存して巡回を実行する関数
+        function saveAndFetch() {
+            const token = document.getElementById('pat').value.trim();
+            if (!token) {
+                alert('Personal Access Token (PAT) を入力してください。');
+                return;
+            }
+            // ローカルストレージに保存
+            localStorage.setItem('github_traffic_pat', token);
+            fetchTrafficData();
+        }
+
+        // 保存されたトークンを削除する関数
+        function clearToken() {
+            localStorage.removeItem('github_traffic_pat');
+            document.getElementById('pat').value = '';
+            alert('保存されたトークンをクリアしました。');
+        }
+
         // 各リポジトリを自動巡回してAPIからデータを取得する関数
         async function fetchTrafficData() {
             const token = document.getElementById('pat').value.trim();
             if (!token) {
-                alert('Personal Access Token (PAT) を入力してください。');
+                alert('Personal Access Token (PAT) が入力されていません。');
                 return;
             }
 
@@ -225,8 +251,17 @@
             }
         }
 
-        // ページロード時に初期表を表示
-        initTable();
+        // ページロード時の処理
+        window.onload = function() {
+            initTable();
+            // ローカルストレージからトークンを自動復元
+            const savedToken = localStorage.getItem('github_traffic_pat');
+            if (savedToken) {
+                document.getElementById('pat').value = savedToken;
+                // トークンが保存されていれば自動で巡回を開始する
+                fetchTrafficData();
+            }
+        };
     </script>
 </body>
 </html>
